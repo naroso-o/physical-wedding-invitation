@@ -95,15 +95,15 @@
             pointer-events: none;
         }
 
-        /* QR 코드 클릭 영역 (inside1 전용) */
+        /* QR 코드 클릭 영역 (속지1 전용) */
         .qr-clickable {
             position: absolute;
-            width: 10%;
-            height: 10%;
+            width: 40%;
+            height: 40%;
             cursor: pointer;
             z-index: 10;
-            /* 중앙 배치 - QR 위치에 맞게 조정하세요 */
-            top: 84%;
+            /* 중앙보다 아래쪽 배치 */
+            top: 65%;
             left: 50%;
             transform: translate(-50%, -50%);
         }
@@ -317,10 +317,10 @@
     <script>
         // 페이지 설정 - 책장 넘김 구조
         const pages = [
-            { id: 0, image: 'cover1.jpg' },      // 첫 페이지 (표지)
-            { id: 1, image: 'inside1.jpg' },      // 2번째 페이지
-            { id: 2, image: 'inside2.jpg' },      // 3번째 페이지
-            { id: 3, image: 'cover2.jpg' }       // 마지막 페이지 (뒷표지)
+            { id: 0, image: 'https://res.cloudinary.com/dkhtbn9hn/image/upload/v1768526484/cover1_xkwk5g.jpg' },      // 첫 페이지 (표지)
+            { id: 1, image: 'https://res.cloudinary.com/dkhtbn9hn/image/upload/v1768526436/inside1_j3pxsu.jpg' },     // 2번째 페이지 (QR 코드)
+            { id: 2, image: 'https://res.cloudinary.com/dkhtbn9hn/image/upload/v1768526436/inside2_jgjwlr.jpg' },     // 3번째 페이지
+            { id: 3, image: 'https://res.cloudinary.com/dkhtbn9hn/image/upload/v1768526483/cover2_wnzfhi.jpg' }       // 마지막 페이지 (뒷표지)
         ];
 
         let currentPage = 0;
@@ -343,7 +343,8 @@
                     const img = new Image();
                     img.onload = () => resolve(page.image);
                     img.onerror = () => reject(page.image);
-                    img.src = page.image;
+                    // URL 인코딩 처리
+                    img.src = encodeURI(page.image);
                 });
             });
 
@@ -363,11 +364,12 @@
                 pageDiv.className = 'page';
 
                 const img = document.createElement('img');
-                img.src = page.image;
+                // URL 인코딩 처리
+                img.src = encodeURI(page.image);
                 img.alt = `페이지 ${index + 1}`;
                 pageDiv.appendChild(img);
 
-                // inside1(index=1)에 QR 클릭 영역 추가
+                // 속지1(index=1)에 QR 클릭 영역 추가
                 if (index === 1) {
                     const qrArea = document.createElement('div');
                     qrArea.className = 'qr-clickable';

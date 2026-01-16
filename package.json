@@ -1,0 +1,10 @@
+{
+  "name": "wedding-invitation-ebook",
+  "version": "1.0.0",
+  "description": "청첩장 전자책 뷰어",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  }
+}

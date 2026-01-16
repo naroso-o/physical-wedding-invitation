@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>청첩장</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&family=Cormorant+Garamond:wght@300;400;500&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --page-width: min(90vw, 400px);
+            --page-height: calc(var(--page-width) * 1.414);
+            --transition-duration: 0.8s;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Nanum Myeongjo', serif;
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 2000px;
+            position: relative;
+        }
+
+        .book-wrapper {
+            position: relative;
+            width: var(--page-width);
+            height: var(--page-height);
+            transform-style: preserve-3d;
+        }
+
+        .page-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            transform-style: preserve-3d;
+            transition: transform var(--transition-duration) cubic-bezier(0.645, 0.045, 0.355, 1);
+            transform-origin: left center;
+        }
+
+        .page {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .page img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            user-select: none;
+            -webkit-user-select: none;
+            pointer-events: none;
+        }
+
+        .page-front {
+            transform: rotateY(0deg);
+            z-index: 2;
+        }
+
+        .page-back {
+            transform: rotateY(180deg);
+            z-index: 1;
+        }
+
+        /* 각 페이지별 상태 */
+        .page-container.flipped {
+            transform: rotateY(-180deg);
+        }
+
+        .page-container:nth-child(1) { z-index: 4; }
+        .page-container:nth-child(2) { z-index: 3; }
+        .page-container:nth-child(3) { z-index: 2; }
+        .page-container:nth-child(4) { z-index: 1; }
+
+        /* 네비게이션 */
+        .navigation {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* 페이지 인디케이터 */
+        .page-indicator {
+            position: fixed;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 14px;
+            letter-spacing: 2px;
+            z-index: 1000;
+        }
+
+        /* 스와이프 힌트 */
+        .swipe-hint {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 12px;
+            text-align: center;
+            animation: fadeInOut 3s ease-in-out infinite;
+            pointer-events: none;
+            font-family: 'Nanum Myeongjo', serif;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        /* 로딩 상태 */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 16px;
+            font-family: 'Nanum Myeongjo', serif;
+        }
+
+        /* 데스크탑 대응 */
+        @media (min-width: 768px) {
+            :root {
+                --page-width: 400px;
+            }
+
+            .swipe-hint {
+                display: none;
+            }
+        }
+
+        /* 애니메이션 */
+        @keyframes pageEnter {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .book-wrapper {
+            animation: pageEnter 0.8s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">청첩장을 불러오는 중...</div>
+    
+    <div class="container" id="container" style="display: none;">
+        <div class="page-indicator" id="pageIndicator">1 / 4</div>
+        
+        <div class="book-wrapper" id="bookWrapper">
+            <!-- 페이지들이 여기에 동적으로 추가됩니다 -->
+        </div>
+
+        <div class="navigation">
+            <button class="nav-btn" id="prevBtn" disabled>‹</button>
+            <button class="nav-btn" id="nextBtn">›</button>
+        </div>
+
+        <div class="swipe-hint">좌우로 스와이프하여 페이지를 넘기세요</div>
+    </div>
+
+    <script>
+        // 페이지 설정
+        const pages = [
+            { front: '겉지1.jpg', back: '속지1.jpg' },
+            { front: '속지2.jpg', back: '겉지2.jpg' }
+        ];
+
+        let currentPage = 0;
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        // DOM 요소
+        const container = document.getElementById('container');
+        const bookWrapper = document.getElementById('bookWrapper');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const pageIndicator = document.getElementById('pageIndicator');
+        const loading = document.getElementById('loading');
+
+        // 이미지 프리로드
+        function preloadImages() {
+            const imagePromises = [];
+            const allImages = [
+                '겉지1.jpg', '속지1.jpg', '속지2.jpg', '겉지2.jpg'
+            ];
+
+            allImages.forEach(src => {
+                const promise = new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve(src);
+                    img.onerror = () => reject(src);
+                    img.src = src;
+                });
+                imagePromises.push(promise);
+            });
+
+            return Promise.all(imagePromises);
+        }
+
+        // 책 구조 생성
+        function createBook() {
+            bookWrapper.innerHTML = '';
+            
+            pages.forEach((page, index) => {
+                const pageContainer = document.createElement('div');
+                pageContainer.className = 'page-container';
+                pageContainer.dataset.page = index;
+
+                // 앞면
+                const frontPage = document.createElement('div');
+                frontPage.className = 'page page-front';
+                const frontImg = document.createElement('img');
+                frontImg.src = page.front;
+                frontImg.alt = `페이지 ${index * 2 + 1}`;
+                frontPage.appendChild(frontImg);
+
+                // 뒷면
+                const backPage = document.createElement('div');
+                backPage.className = 'page page-back';
+                const backImg = document.createElement('img');
+                backImg.src = page.back;
+                backImg.alt = `페이지 ${index * 2 + 2}`;
+                backPage.appendChild(backImg);
+
+                pageContainer.appendChild(frontPage);
+                pageContainer.appendChild(backPage);
+                bookWrapper.appendChild(pageContainer);
+            });
+        }
+
+        // 페이지 넘기기
+        function updatePages() {
+            const pageContainers = document.querySelectorAll('.page-container');
+            
+            pageContainers.forEach((container, index) => {
+                if (index < currentPage) {
+                    container.classList.add('flipped');
+                } else {
+                    container.classList.remove('flipped');
+                }
+            });
+
+            // 페이지 인디케이터 업데이트
+            const totalPages = pages.length * 2;
+            const displayPage = (currentPage * 2) + 1;
+            pageIndicator.textContent = `${displayPage} / ${totalPages}`;
+
+            // 버튼 상태 업데이트
+            prevBtn.disabled = currentPage === 0;
+            nextBtn.disabled = currentPage === pages.length;
+
+            // 스와이프 힌트 숨기기
+            if (currentPage > 0) {
+                document.querySelector('.swipe-hint').style.display = 'none';
+            }
+        }
+
+        // 다음 페이지
+        function nextPage() {
+            if (currentPage < pages.length) {
+                currentPage++;
+                updatePages();
+            }
+        }
+
+        // 이전 페이지
+        function prevPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                updatePages();
+            }
+        }
+
+        // 터치 이벤트
+        bookWrapper.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        bookWrapper.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // 왼쪽으로 스와이프 (다음 페이지)
+                    nextPage();
+                } else {
+                    // 오른쪽으로 스와이프 (이전 페이지)
+                    prevPage();
+                }
+            }
+        }
+
+        // 키보드 이벤트
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') prevPage();
+            if (e.key === 'ArrowRight') nextPage();
+        });
+
+        // 버튼 이벤트
+        prevBtn.addEventListener('click', prevPage);
+        nextBtn.addEventListener('click', nextPage);
+
+        // 초기화
+        async function init() {
+            try {
+                await preloadImages();
+                createBook();
+                loading.style.display = 'none';
+                container.style.display = 'flex';
+                updatePages();
+            } catch (error) {
+                console.error('이미지 로딩 실패:', error);
+                loading.textContent = '이미지를 불러오는데 실패했습니다.';
+            }
+        }
+
+        // 앱 시작
+        init();
+    </script>
+</body>
+</html>
